@@ -1,45 +1,55 @@
 {
-    "teams": [
-        {
-            "name": "零小",
-            "players": [],
-            "admins": ["chenglin0807","shan.1118"],
-            "station": ""
-        },
-
-        {
-            "name": "一小",
-            "players": [],
-            "admins": ["abaaba_226","wennn_529"],
-            "station": ""
-        },
-
-        {
-            "name": "二小",
-            "players": [],
-            "admins": ["ironegg.","fei._.0204"],
-            "station": ""
-        },
-
-        {
-            "name": "三小",
-            "players": [],
-            "admins": ["chen72._.","jamie._.1716"],
-            "station": ""
-        },
-        
-        {
-            "name": "四小",
-            "players": [],
-            "admins": ["wuchanghua","hoyou1203"],
-            "station": ""
-        },
-
-        {
-            "name": "五小（老人們）",
-            "players": [],
-            "admins": [],
-            "station": ""
-        }
-    ]
+  "teams": [
+    {
+      "name": "零小",
+      "players": [],
+      "admins": [
+        "spongycat",
+        "rainaaaa630"
+      ],
+      "station": ""
+    },
+    {
+      "name": "一小",
+      "players": [],
+      "admins": [
+        "cwy.0203",
+        "yuc.6012"
+      ],
+      "station": ""
+    },
+    {
+      "name": "二小",
+      "players": [],
+      "admins": [
+        "shenpor",
+        "yin__0627"
+      ],
+      "station": ""
+    },
+    {
+      "name": "三小",
+      "players": [],
+      "admins": [
+        "2341518027",
+        "11430039"
+      ],
+      "station": ""
+    },
+    {
+      "name": "四小",
+      "players": [],
+      "admins": [
+        "infor39_avg",
+        "aoi_419._"
+      ],
+      "station": ""
+    },
+    {
+      "name": "五小（老人們）",
+      "players": [],
+      "admins": [],
+      "station": ""
+    }
+  ]
 }
