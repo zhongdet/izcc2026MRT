@@ -234,9 +234,9 @@
     "Difficult": 1
   },
   "台大醫院": {
-    "Mission": "找到孔子（？）跟他拜師（如附圖）",
+    "Mission": "監獄",
     "Tips": "None",
-    "Exit": "4",
+    "Exit": "N/A",
     "Difficult": 2
   },
   "中山": {
@@ -574,5 +574,11 @@
     "Tips": "不要影響到在工作的人歐",
     "Exit": "五工路（工業區周邊道路）",
     "Difficult": 2
+  },
+  "秀朗橋": {
+    "Mission": "監獄",
+    "Tips": "None",
+    "Exit": "N/A",
+    "Difficult": 1
   }
 }
