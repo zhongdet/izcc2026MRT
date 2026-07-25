@@ -13,3 +13,4 @@ Zenora>=0.0.3.post1
 gunicorn
 gevent
 gevent-websocket
+psycopg2-binary
