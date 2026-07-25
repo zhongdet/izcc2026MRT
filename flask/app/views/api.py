@@ -1,11 +1,11 @@
 import pygeohash as pgh
 import logging
 from logging import INFO
-from flask import abort, Blueprint, jsonify, session
-from zenora import APIClient
+from flask import abort, Blueprint, jsonify
 
 from ..core import core
 from ..config import RESET_TEXT_COLOR, YELLOW_TEXT_COLOR
+from ..modules.auth import current_identity
 from ..modules.checker import is_admin, is_player
 from ..data import load_data
 from ..status_codes import STATUS_CODES, LANGUAGE
@@ -60,10 +60,9 @@ def stations():
     graph = core.metro.graph
     unlock_stations = []
     
-    if "token" in session:
-        bearer_client = APIClient(session.get("token"), bearer=True)
-        current_user = bearer_client.users.get_current_user()
-        team, _ = core.check_player(current_user.username)
+    identity = current_identity()
+    if identity is not None:
+        team, _ = core.check_player(identity.username)
         if team is not None:
             unlock_stations.extend(team.stations)
             unlock_stations.append(team.target_location)
@@ -94,10 +93,9 @@ def station(name: str):
     
     unlock_stations = []
     
-    if "token" in session:
-        bearer_client = APIClient(session.get("token"), bearer=True)
-        current_user = bearer_client.users.get_current_user()
-        team, _ = core.check_player(current_user.username)
+    identity = current_identity()
+    if identity is not None:
+        team, _ = core.check_player(identity.username)
         if team is not None:
             unlock_stations.extend(team.stations)
             unlock_stations.append(team.target_location)
@@ -206,18 +204,7 @@ def join_team(name: str, player_name: str):
     if name not in core.teams:
         return STATUS_CODES.S00004
 
-    current_team, admin = core.check_player(player_name)
-    
-    if current_team is not None:
-        if admin:
-            core.teams[current_team].admins.remove(player_name)
-        else:
-            core.teams[current_team].players.remove(player_name)
-
-    core.teams[name].players.append(player_name)
-    
-    if player_name in core.unknown_players: 
-        core.unknown_players.remove(player_name)
+    core.assign_player(name, player_name)
         
     return STATUS_CODES.S00000
 
@@ -250,16 +237,7 @@ def leave_team(player_name: str):
     if core.is_running is False:
         return STATUS_CODES.S99999
         
-    for team in core.teams.values():
-        if player_name in team.players:
-            team.players.remove(player_name)
-            return STATUS_CODES.S00000
-        
-        if player_name in team.admins:
-            team.admins.remove(player_name)
-            return STATUS_CODES.S00000
-            
-    return STATUS_CODES.S30002
+    return STATUS_CODES.S00000 if core.remove_player(player_name) else STATUS_CODES.S30002
     
 
 # @api.route("/get_pos/<name>")
@@ -539,11 +517,9 @@ def add_point(name: str, point: int):
         
     core.teams[name].point += point
     
-    bearer_client = APIClient(session.get("token"), bearer=True)
-    current_user = bearer_client.users.get_current_user()        
-    
-    log.log(INFO, f"{YELLOW_TEXT_COLOR}User \"{current_user.username}\" added {point} point(s) to {name}{RESET_TEXT_COLOR}")
-    core.teams[name].add_point_log(point, f"By {current_user.username}")
+    identity = current_identity()
+    log.log(INFO, f"{YELLOW_TEXT_COLOR}User \"{identity.username}\" added {point} point(s) to {name}{RESET_TEXT_COLOR}")
+    core.teams[name].add_point_log(point, f"By {identity.username}")
     
     return STATUS_CODES.S00000
 
@@ -584,11 +560,9 @@ def set_point(name: str, point: int):
     
     point = int(point)
     
-    bearer_client = APIClient(session.get("token"), bearer=True)
-    current_user = bearer_client.users.get_current_user()
-
-    log.log(INFO, f"{YELLOW_TEXT_COLOR}User \"{current_user.username}\" set {name}'s points to {point}{RESET_TEXT_COLOR}")
-    core.teams[name].add_point_log(point - core.teams[name].point, f"By {current_user.username}")
+    identity = current_identity()
+    log.log(INFO, f"{YELLOW_TEXT_COLOR}User \"{identity.username}\" set {name}'s points to {point}{RESET_TEXT_COLOR}")
+    core.teams[name].add_point_log(point - core.teams[name].point, f"By {identity.username}")
     core.teams[name].point = point
     
     return STATUS_CODES.S00000
@@ -761,4 +735,4 @@ def get_users():
     if not is_admin():
         abort(403)
     
-    return jsonify(core.unknown_players)
+    return jsonify(core.unknown_players.to_list())

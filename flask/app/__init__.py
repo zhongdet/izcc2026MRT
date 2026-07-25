@@ -9,10 +9,14 @@ from flask_wtf import CSRFProtect
 from .config import DevConfig, ProdConfig, BASEDIR
 from .models import db
 from .modules.socketio import socketio
-from .core import core
 
 
 log = logging.getLogger(__name__)
+
+
+def validate_secret_key(production: bool, secret_key: str | None) -> None:
+    if production and len(secret_key or "") < 32:
+        raise RuntimeError("SECRET_KEY must be at least 32 characters in production")
 
 
 def init_logger(debug: bool=False) -> None:
@@ -93,15 +97,20 @@ def create_app() -> Flask:
     app: :class:`Flask`
         A flask app.
     """
+    production = os.getenv("PRODUCTION", "False").lower() in ("true", "1", "t")
     init_logger(debug=True)
     app = Flask(__name__)
-    app.config.from_object(ProdConfig if os.getenv("PRODUCTION", "False").lower() in ("true", "1", "t") else DevConfig)
+    app.config.from_object(ProdConfig if production else DevConfig)
+    validate_secret_key(production, app.config.get("SECRET_KEY"))
+
+    from .core import core
+
     csrf = CSRFProtect(app)
     CORS(app)
     app_load_blueprints(app)
     db.init_app(app)
     # Use gevent in production (Docker), threading in development
-    async_mode = 'gevent' if os.getenv("PRODUCTION", "False").lower() in ("true", "1", "t") else 'threading'
+    async_mode = 'gevent' if production else 'threading'
     socketio.init_app(app, cors_allowed_origins="*", async_mode=async_mode)
     core.init_socketio(socketio)
     with app.app_context(): db.create_all()

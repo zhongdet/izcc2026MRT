@@ -3,12 +3,12 @@ import os
 import logging
 import json
 import zipfile
-from flask import abort, Blueprint, Response, render_template, redirect, send_file, send_from_directory, session
-from zenora import APIClient
+from flask import abort, Blueprint, Response, render_template, redirect, send_file, send_from_directory
 
 from ..core import core
 from ..data import load_data
 from ..config import BASEDIR
+from ..modules.auth import current_identity
 from ..modules.checker import is_game_admin, is_admin
 from ..game_config import GAME_ADMIN_TEAM_NAME
 
@@ -27,30 +27,28 @@ def checking(response: Response):
 
 @main.route("/")
 def index():
-    if "token" in session:
-        bearer_client = APIClient(session.get("token"), bearer=True)
-        current_user = bearer_client.users.get_current_user()
-        team, _ = core.check_player(current_user.username)
+    identity = current_identity()
+    if identity is not None:
+        team, _ = core.check_player(identity.username)
         if team is None and is_game_admin():
             team = GAME_ADMIN_TEAM_NAME
         teams = [team for team in core.teams.values() if team.name != "admins"]
-        return render_template("index.html", current_user=current_user.username, team=team, graph=core.metro.graph, avater_url=current_user.avatar_url, teams=teams)
+        return render_template("index.html", current_user=identity.username, team=team, graph=core.metro.graph, avater_url=identity.avatar_url, teams=teams)
     
     return redirect("/login")
 
 
 @main.route("/admin")
 def admin():
-    if "token" in session:
-        bearer_client = APIClient(session.get("token"), bearer=True)
-        current_user = bearer_client.users.get_current_user()
-        team, is_admin = core.check_player(current_user.username)
+    identity = current_identity()
+    if identity is not None:
+        team, is_admin = core.check_player(identity.username)
 
         if team is None and is_game_admin():
             team = GAME_ADMIN_TEAM_NAME
     
         if is_admin:
-            return render_template("admin.html", current_user=current_user.username, team=team)
+            return render_template("admin.html", current_user=identity.username, team=team)
         
     return redirect("/")
 
@@ -66,79 +64,74 @@ def download_graph():
 
 @main.route("/combo")
 def combo():
-    if "token" in session:
-        bearer_client = APIClient(session.get("token"), bearer=True)
-        current_user = bearer_client.users.get_current_user()
-        team, _ = core.check_player(current_user.username)
+    identity = current_identity()
+    if identity is not None:
+        team, _ = core.check_player(identity.username)
 
         if team is None and is_game_admin():
             team = GAME_ADMIN_TEAM_NAME
 
-        return render_template("combo.html", current_user=current_user.username, team=team, graph=core.metro.graph, combos=load_data("combo"), avater_url=current_user.avatar_url)
+        return render_template("combo.html", current_user=identity.username, team=team, graph=core.metro.graph, combos=load_data("combo"), avater_url=identity.avatar_url)
     
     return redirect("/")
 
 
 @main.route("/team_admin")
 def team_admin():
-    if "token" in session:
-        bearer_client = APIClient(session.get("token"), bearer=True)
-        current_user = bearer_client.users.get_current_user()
-        team, _ = core.check_player(current_user.username)
+    identity = current_identity()
+    if identity is not None:
+        team, _ = core.check_player(identity.username)
         
         if team is None and is_game_admin():
             team = GAME_ADMIN_TEAM_NAME
 
         if is_admin():
-            return render_template("team_admin.html", current_user=current_user.username, team=team, graph=core.metro.graph, avater_url=current_user.avatar_url)
+            return render_template("team_admin.html", current_user=identity.username, team=team, graph=core.metro.graph, avater_url=identity.avatar_url)
         
     return redirect("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
 
 @main.route("/card")
 def card():
-    if "token" in session:
-        bearer_client = APIClient(session.get("token"), bearer=True)
-        current_user = bearer_client.users.get_current_user()
-        team, _ = core.check_player(current_user.username)
+    identity = current_identity()
+    if identity is not None:
+        team, _ = core.check_player(identity.username)
 
         if team is None and is_game_admin():
             team = GAME_ADMIN_TEAM_NAME
         
         if is_admin():
-            return render_template("card.html", current_user=current_user.username, team=team, graph=core.metro.graph)
+            return render_template("card.html", current_user=identity.username, team=team, graph=core.metro.graph)
         
     return redirect("/")
 
 
 @main.route("/dice")
 def dice():
-    if "token" in session:
-        bearer_client = APIClient(session.get("token"), bearer=True)
-        current_user = bearer_client.users.get_current_user()
-        team, _ = core.check_player(current_user.username)
+    identity = current_identity()
+    if identity is not None:
+        team, _ = core.check_player(identity.username)
 
         if team is None and is_game_admin():
             team = GAME_ADMIN_TEAM_NAME
         
         if is_admin():
-            return render_template("dice.html", current_user=current_user.username, team=team, graph=core.metro.graph)
+            return render_template("dice.html", current_user=identity.username, team=team, graph=core.metro.graph)
 
     return redirect("/")
 
 
 @main.route("/initialization")
 def initialization():
-    if "token" in session:
-        bearer_client = APIClient(session.get("token"), bearer=True)
-        current_user = bearer_client.users.get_current_user()
-        team, _ = core.check_player(current_user.username)
+    identity = current_identity()
+    if identity is not None:
+        team, _ = core.check_player(identity.username)
 
         if team is None and is_game_admin():
             team = GAME_ADMIN_TEAM_NAME
         
         if is_admin():
-            return render_template("initialization.html", current_user=current_user.username, team=team, graph=core.metro.graph)
+            return render_template("initialization.html", current_user=identity.username, team=team, graph=core.metro.graph)
 
     return redirect("/")
 
@@ -151,10 +144,11 @@ def server_log():
     if not is_game_admin():
         abort(404)
 
-    bearer_client = APIClient(session.get("token"), bearer=True)
-    current_user = bearer_client.users.get_current_user()
-    
-    log.info(f"{current_user.username}({current_user.id}) is checking the log file")
+    identity = current_identity()
+    if identity is None:
+        abort(404)
+
+    log.info("%s(%s) is checking the log file", identity.username, identity.discord_id)
     
     with zipfile.ZipFile(log_directory + ".zip", 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(log_directory):

@@ -1,8 +1,6 @@
 import logging
 from flask_socketio import SocketIO
 
-from ..core import core
-
 
 log = logging.getLogger(__name__)
 socketio = SocketIO(cors_allowed_origins="*", allow_upgrades=False)

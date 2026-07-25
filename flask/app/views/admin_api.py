@@ -1,9 +1,9 @@
 import logging
 from logging import INFO
-from flask import abort, Blueprint, session, request
-from zenora import APIClient
+from flask import abort, Blueprint, request
 
 from ..core import core
+from ..modules.auth import current_identity
 from ..modules.checker import is_admin, is_game_admin
 from ..status_codes import STATUS_CODES
 from ..models import db
@@ -22,10 +22,9 @@ def log_user():
     if request.endpoint == "admin_api.save_game_auto":
         return
     
-    if "token" in session:
-        bearer_client = APIClient(session.get("token"), bearer=True)
-        current_user = bearer_client.users.get_current_user()
-        log.log(INFO, f"{yellow_text_color}User \"{current_user.username}\" is using an admin api: \"{request.endpoint}\"{reset_text_color}")
+    identity = current_identity()
+    if identity is not None:
+        log.log(INFO, f"{yellow_text_color}User \"{identity.username}\" is using an admin api: \"{request.endpoint}\"{reset_text_color}")
 
 
 @admin_api.route("/create_team/<name>/<station>")
@@ -115,10 +114,7 @@ def join_team(name: str, player_name: str):
     if name not in core.teams:
         return STATUS_CODES.S00004
 
-    core.teams[name].admins.append(player_name)
-    
-    if player_name in core.unknown_players: 
-        core.unknown_players.remove(player_name)
+    core.assign_player(name, player_name, as_admin=True)
     
     return STATUS_CODES.S00000
 

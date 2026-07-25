@@ -8,9 +8,15 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask_socketio import SocketIO
 
 from ..game_config import ADMINS, CARD_COUNT, COLLAPSE, COLLAPSE_DAMAGE_INTERVAL, COLLAPSE_DAMAGE, COLLAPSE_LIST, END_STATION, DISTANCE, IMPRISONED_TIME, BACKUP_INTERVAL
+from ..config import UNKNOWN_PLAYER_LIMIT, UNKNOWN_PLAYER_TTL_SECONDS
 from ..data import load_data
 from ..models import db
 from ..models.teams import Teams
+from ..modules.pending_players import PendingPlayers
+from ..modules.team_membership import (
+    assign_player as assign_team_member,
+    remove_player as remove_team_member,
+)
 from .metro import MetroSystem
 from .team import Team
 from .collapse import Collapse
@@ -35,7 +41,10 @@ class Core:
         self.backup_scheduler = BackgroundScheduler()
         self.auto_backup_secret = str(random.random())
 
-        self.unknown_players = []
+        self.unknown_players = PendingPlayers(
+            ttl_seconds=UNKNOWN_PLAYER_TTL_SECONDS,
+            max_size=UNKNOWN_PLAYER_LIMIT,
+        )
         
         # 預先建立管理員隊伍
         # self.create_team("admins", admins=ADMINS.copy())
@@ -252,10 +261,13 @@ class Core:
         log.debug("Load data from the database.")
             
         
-    def save_team(self) -> None:
+    def save_team(self, names: set[str] | None=None) -> None:
         """Save the data to the database."""
-        
-        for team in self.teams.values():
+
+        teams = self.teams.values() if names is None else (
+            self.teams[name] for name in names if name in self.teams
+        )
+        for team in teams:
             if team.name == "admins":
                 continue
             if Teams.query.filter_by(name=team.name).first() is None:
@@ -301,7 +313,7 @@ class Core:
         log.debug(f"Team {name} created.")
         
         
-    def check_player(self, player: str) -> tuple[Team | None, bool]:
+    def check_player(self, player: str, remember_unknown: bool=True) -> tuple[Team | None, bool]:
         """
         Check if the player is in the team.
         
@@ -322,15 +334,42 @@ class Core:
         for team in self.teams:
             
             if player in self.teams[team].admins:
+                self.unknown_players.discard(player)
                 return self.teams[team], True
             
             if player in self.teams[team].players:
+                self.unknown_players.discard(player)
                 return self.teams[team], player in ADMINS
-            
-        if player not in self.unknown_players:
-            self.unknown_players.append(player)
+
+        if remember_unknown and player not in ADMINS:
+            self.unknown_players.add(player)
             
         return None, player in ADMINS
+
+
+    def assign_player(self, team_name: str, player: str, as_admin: bool=False) -> bool:
+        """Assign a Discord user to one team and persist affected teams."""
+        affected_teams = assign_team_member(
+            self.teams,
+            self.unknown_players,
+            team_name,
+            player,
+            as_admin=as_admin,
+        )
+        if affected_teams is None:
+            return False
+        self.save_team(affected_teams)
+        return True
+
+
+    def remove_player(self, player: str) -> bool:
+        """Remove a Discord user from all teams and persist affected teams."""
+        affected_teams = remove_team_member(self.teams, player)
+        if not affected_teams:
+            return False
+
+        self.save_team(affected_teams)
+        return True
     
     
     def check_combo(self, name: str) -> None:
