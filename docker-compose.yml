@@ -1,19 +1,20 @@
-version: "3.7"
- 
 services:
- 
   flask:
     build: ./flask
     container_name: flask
+    env_file:
+      - ./flask/app/.env
     environment:
       - APP_NAME=FlaskApp
-    expose:
-      - 4011
+    ports:
+      - "127.0.0.1:4011:8080"
     depends_on:
-      - db
- 
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
   db:
-    image: postgres
+    image: postgres:16
     container_name: postgres
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
@@ -21,16 +22,9 @@ services:
       POSTGRES_DB: db
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-    ports:
-      - 5432:5432
- 
- 
-  nginx:
-    build: ./nginx
-    container_name: nginx
-    ports:
-      - "80:80"
-      - "443:443"
- 
-    depends_on:
-      - flask
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
