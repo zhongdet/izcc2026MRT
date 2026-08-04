@@ -199,6 +199,11 @@
 | `REDIRECT_URI`            | 否     | `/oauth/callback`               | Discord OAuth2 回調網址                             |
 | `SQLALCHEMY_DATABASE_URI` | 否     | SQLite (`sqlite:///db.sqlite3`) | 資料庫連線字串（正式環境使用 PostgreSQL）           |
 | `PRODUCTION`              | 否     | `False`                         | 設為 `true` 啟用正式模式（使用 PostgreSQL、gevent） |
+| `SECRET_KEY`              | 正式環境是 | 開發模式每次啟動隨機產生     | 簽署站內 session；正式環境至少 32 字元              |
+| `AUTH_SESSION_IDLE_MINUTES` | 否   | `30`                            | 登入 session 的閒置逾時分鐘數                       |
+| `AUTH_SESSION_ABSOLUTE_HOURS` | 否 | `12`                            | 登入 session 的最長有效時數                         |
+| `UNKNOWN_PLAYER_TTL_SECONDS` | 否 | `1800`                          | 未分隊使用者在候選名單中的保留秒數                  |
+| `UNKNOWN_PLAYER_LIMIT`    | 否     | `200`                           | 未分隊使用者候選名單的數量上限                      |
 
 範例 `.env` 檔：
 
@@ -208,6 +213,7 @@ CLIENT_ID=your_discord_oauth2_client_id
 CLIENT_SECRET=your_discord_oauth2_client_secret
 REDIRECT_URI=http://localhost:8080/oauth/callback
 SQLALCHEMY_DATABASE_URI=sqlite:///db.sqlite3
+SECRET_KEY=replace_with_a_long_random_secret
 PRODUCTION=false
 ```
 
